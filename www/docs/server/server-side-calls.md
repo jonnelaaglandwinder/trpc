@@ -294,7 +294,7 @@ export default async (
 
 ### Error handling
 
-Either the createFactoryCaller or the createCaller function can take an error handler through the onError option. This can be used to throw errors that are not wrapped in a TRPCError, or respond to errors in some other way. Any handler passed to createCallerFactory will be called before the handler passed to createCaller.
+The createCaller function can take an error handler through the onError option. This can be used to throw errors that are not wrapped in a TRPCError, or respond to errors in some other way.  
 The handler is called with the same arguments as an error formatter would be, expect for the shape field:
 
 ```ts twoslash
@@ -322,12 +322,6 @@ const router = t.router({
   }),
 });
 
-const callerFactory = router.createCallerFactory({
-  onError: ({ error }) => {
-    console.error('An error occurred:', error);
-  },
-});
-
 const caller = callerFactory(
   {},
   {
@@ -337,7 +331,6 @@ const caller = callerFactory(
   },
 );
 
-// The following will log "An error occurred: Error: Invalid name", and then throw a plain error
-//  with the message "This is a custom error"
+// The following will throw a plain error with the message "This is a custom error"
 caller.greeting({ name: 'invalid' });
 ```
