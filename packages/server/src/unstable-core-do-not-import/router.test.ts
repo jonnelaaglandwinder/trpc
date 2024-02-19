@@ -49,26 +49,17 @@ describe('RouterCaller', () => {
       foo: 'bar',
     };
 
-    const caller = t.createCallerFactory(router, { onError: factoryHandler })(
-      ctx,
-      { onError: callerHandler },
-    );
-
-    test('should call the onError handler when an error is thrown, rethrowing the error aftwards', async () => {
-      await expect(caller.thrower()).rejects.toThrow('error');
-
-      expect(factoryHandler).toHaveBeenCalledWith(
-        expect.objectContaining({
-          error: expect.objectContaining({
-            cause: expect.objectContaining({
-              message: 'error',
-            }),
-          }),
-          ctx,
-          path: 'thrower',
-          type: 'query',
-        }),
+    test('calling next() in the createCallerFactory error handler should call the one provided to createCaller', async () => {
+      const caller = t.createCallerFactory(router, { onError: factoryHandler })(
+        ctx,
+        { onError: callerHandler },
       );
+
+      factoryHandler.mockImplementationOnce(async ({ next }) => {
+        await next();
+      });
+
+      await expect(caller.thrower()).rejects.toThrow('error');
 
       expect(callerHandler).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -84,12 +75,57 @@ describe('RouterCaller', () => {
       );
     });
 
-    test('should not intercept errors thrown from the onError handler', async () => {
+    test('handler provided to createCaller should be called directory when no handler is provided to createCallerFactory', async () => {
+      const caller = t.createCallerFactory(router)(ctx, {
+        onError: callerHandler,
+      });
+
+      await expect(caller.thrower()).rejects.toThrow('error');
+    });
+
+    test('original TRPCError should be rethrown when neither handler throws', async () => {
+      const caller = t.createCallerFactory(router, { onError: factoryHandler })(
+        ctx,
+        { onError: callerHandler },
+      );
+
+      await expect(caller.thrower()).rejects.toThrow('error');
+
+      expect(callerHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: expect.objectContaining({
+            cause: expect.objectContaining({
+              message: 'error',
+            }),
+          }),
+          ctx,
+          path: 'thrower',
+          type: 'query',
+        }),
+      );
+    });
+
+    test('should not intercept errors thrown from any onError handler', async () => {
+      const factoryHandlerCaller = t.createCallerFactory(router, {
+        onError: factoryHandler,
+      })(ctx);
+      const callerHandlerCaller = t.createCallerFactory(router)(ctx, {
+        onError: callerHandler,
+      });
+
       callerHandler.mockImplementationOnce(() => {
         throw new Error('custom error');
       });
+      factoryHandler.mockImplementationOnce(() => {
+        throw new Error('custom error');
+      });
 
-      await expect(caller.thrower()).rejects.toThrow('custom error');
+      await expect(factoryHandlerCaller.thrower()).rejects.toThrow(
+        'custom error',
+      );
+      await expect(callerHandlerCaller.thrower()).rejects.toThrow(
+        'custom error',
+      );
     });
   });
 });

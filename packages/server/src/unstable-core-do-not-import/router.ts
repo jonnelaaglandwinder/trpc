@@ -46,6 +46,7 @@ export type RouterCallerErrorHandler<TContext> = (arg: {
   path: string | undefined;
   input: unknown;
   ctx: TContext | undefined;
+  next: RouterCallerErrorHandler<TContext>;
 }) => void | Promise<void>;
 
 /**
@@ -291,16 +292,29 @@ export function createCallerFactory<TRoot extends AnyRootTypes>() {
                   input: args[0],
                   path: fullPath,
                   type: procedure._def.type,
+                  async next() {
+                    await options?.onError?.({
+                      ctx,
+                      error,
+                      input: args[0],
+                      path: fullPath,
+                      type: procedure._def.type,
+                      next() {
+                        return;
+                      },
+                    });
+                  },
                 });
-              }
-
-              if (options?.onError) {
-                await options?.onError({
+              } else {
+                await options?.onError?.({
                   ctx,
                   error,
                   input: args[0],
                   path: fullPath,
                   type: procedure._def.type,
+                  next() {
+                    return;
+                  },
                 });
               }
             }

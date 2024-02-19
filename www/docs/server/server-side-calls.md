@@ -304,6 +304,7 @@ The handler is called with the same arguments as an error formatter would be, ex
   path: string | undefined; // The path of the procedure that threw the error
   input: unknown; // The input that was passed to the procedure
   type: 'query' | 'mutation' | 'subscription' | 'unknown'; // The type of the procedure that threw the error
+  next: RouterCallerErrorHandler; // The next error handler in the chain
 }
 ```
 
@@ -323,8 +324,9 @@ const router = t.router({
 });
 
 const callerFactory = router.createCallerFactory({
-  onError: ({ error }) => {
+  onError: async ({ next, error }) => {
     console.error('An error occurred:', error);
+    await next();
   },
 });
 
